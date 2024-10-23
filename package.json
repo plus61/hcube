@@ -8,9 +8,14 @@
     "lint": "eslint src --ext ts,tsx --report-unused-disable-directives --max-warnings 0",
     "preview": "vite preview"
   },
-  "dependencies": {
-    "react": "^18.2.0",
-    "react-dom": "^18.2.0"
+  
+   "dependencies": {
+      "react": "^18.2.0",
+      "react-dom": "^18.2.0",
+      "react-router-dom": "^6.0.0",
+      "@emailjs/browser": "^3.0.0",
+      "lucide-react": "^0.263.1"
+    }
   },
   "devDependencies": {
     "@types/react": "^18.2.0",
@@ -22,4 +27,4 @@
     "typescript": "^5.0.0",
     "vite": "^4.5.5"
   }
- }
+}
