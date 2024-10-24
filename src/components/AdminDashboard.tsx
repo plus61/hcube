@@ -1,8 +1,10 @@
 import React, { useState } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { Calendar, Clock, Plus, Edit, Trash, Check, X, Download, MapPin } from 'lucide-react';
 import { useEventContext } from '../contexts/EventContext';
 
 const AdminDashboard: React.FC = () => {
+  const navigate = useNavigate();
   const {
     events,
     reservations,
@@ -23,27 +25,59 @@ const AdminDashboard: React.FC = () => {
     venue: '' 
   });
 
-  const [assigningStaff, setAssigningStaff] = useState<string>('');
-
-  const handleAddEvent = (e: React.FormEvent) => {
+  const handleAddEvent = async (e: React.FormEvent) => {
     e.preventDefault();
-    addEvent(newEvent);
-    setNewEvent({ name: '', date: '', startTime: '', endTime: '', capacity: 0, venue: '' });
+    try {
+      await addEvent(newEvent);
+      setNewEvent({ name: '', date: '', startTime: '', endTime: '', capacity: 0, venue: '' });
+      navigate('.', { replace: true });
+    } catch (error) {
+      console.error('Failed to add event:', error);
+    }
   };
 
-  const handleUpdateSmtpSettings = (e: React.FormEvent) => {
+  const handleUpdateSmtpSettings = async (e: React.FormEvent) => {
     e.preventDefault();
-    updateSmtpSettings(smtpSettings);
+    try {
+      await updateSmtpSettings(smtpSettings);
+      navigate('.', { replace: true });
+    } catch (error) {
+      console.error('Failed to update SMTP settings:', error);
+    }
   };
 
-  const handleStatusUpdate = (reservationId: string, completed: boolean) => {
-    if (completed) {
-      const staffName = prompt('担当者名を入力してください:');
-      if (staffName) {
-        updateReservation(reservationId, { completed: true, assignedStaff: staffName });
+  const handleStatusUpdate = async (reservationId: string, completed: boolean) => {
+    try {
+      if (completed) {
+        const staffName = prompt('担当者名を入力してください:');
+        if (staffName) {
+          await updateReservation(reservationId, { completed: true, assignedStaff: staffName });
+          navigate('.', { replace: true });
+        }
+      } else {
+        await updateReservation(reservationId, { completed: false, assignedStaff: undefined });
+        navigate('.', { replace: true });
       }
-    } else {
-      updateReservation(reservationId, { completed: false, assignedStaff: undefined });
+    } catch (error) {
+      console.error('Failed to update reservation status:', error);
+    }
+  };
+
+  const handleDeleteEvent = async (eventId: string) => {
+    try {
+      await deleteEvent(eventId);
+      navigate('.', { replace: true });
+    } catch (error) {
+      console.error('Failed to delete event:', error);
+    }
+  };
+
+  const handleDeleteReservation = async (reservationId: string) => {
+    try {
+      await deleteReservation(reservationId);
+      navigate('.', { replace: true });
+    } catch (error) {
+      console.error('Failed to delete reservation:', error);
     }
   };
 
@@ -127,7 +161,7 @@ const AdminDashboard: React.FC = () => {
               <li key={event.id} className="mb-2 flex items-center">
                 <MapPin size={16} className="mr-2 text-gray-500" />
                 <span>{event.name} - {event.venue} - {event.date} {event.startTime}~{event.endTime} (定員: {event.capacity})</span>
-                <button onClick={() => deleteEvent(event.id)} className="ml-2 text-red-500">
+                <button onClick={() => handleDeleteEvent(event.id)} className="ml-2 text-red-500">
                   <Trash size={20} />
                 </button>
               </li>
@@ -185,7 +219,7 @@ const AdminDashboard: React.FC = () => {
                       </div>
                     </div>
                     <button
-                      onClick={() => deleteReservation(reservation.id)}
+                      onClick={() => handleDeleteReservation(reservation.id)}
                       className="text-red-500 hover:text-red-700"
                     >
                       <Trash size={20} />
