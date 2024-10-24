@@ -1,17 +1,27 @@
 import React, { createContext, useState, useContext, ReactNode, useEffect, useCallback } from 'react';
+import axios from 'axios';
 
 export interface Event {
   id: string;
-  title: string;
-  start: Date;
-  end: Date;
+  name: string;
+  date: string;
+  startTime: string;
+  endTime: string;
+  capacity: number;
+  venue: string;
 }
 
-interface EventContextType {
+export interface EventContextType {
   events: Event[];
-  addEvent: (event: Event) => void;
-  updateEvent: (event: Event) => void;
-  deleteEvent: (id: string) => void;
+  reservations: any[];
+  smtpSettings: any;
+  addEvent: (event: Event) => Promise<void>;
+  updateEvent: (id: string, updatedEvent: Event) => Promise<void>;
+  deleteEvent: (id: string) => Promise<void>;
+  addReservation: (reservation: any) => Promise<void>;
+  updateReservation: (id: string, updatedReservation: any) => Promise<void>;
+  deleteReservation: (id: string) => Promise<void>;
+  updateSmtpSettings: (settings: any) => Promise<void>;
 }
 
 export const EventContext = createContext<EventContextType | undefined>(undefined);
@@ -24,98 +34,92 @@ export const useEventContext = () => {
   return context;
 };
 
-import React, { createContext, useState, useEffect, useCallback } from 'react';
-
-export interface Event {
-  id: string;
-  title: string;
-  start: Date;
-  end: Date;
-}
-
-interface EventContextType {
-  events: Event[];
-  addEvent: (event: Event) => void;
-  updateEvent: (event: Event) => void;
-  deleteEvent: (id: string) => void;
-}
-
-export const EventContext = createContext<EventContextType | undefined>(undefined);
-
 export const EventProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const [events, setEvents] = useState<Event[]>([]);
-
-  useEffect(() => {
-    const fetchEvents = async () => {
-      try {
-        const response = await axios.get('http://localhost:3001/api/events');
-        setEvents(response.data.map((event: Event) => ({
-          ...event,
-          start: new Date(event.start),
-          end: new Date(event.end)
-        })));
-      } catch (error) {
-        console.error('Error fetching events:', error);
-        // ローカルストレージからのフォールバック
-        const storedEvents = localStorage.getItem('events');
-        if (storedEvents) {
-          setEvents(JSON.parse(storedEvents).map((event: Event) => ({
-            ...event,
-            start: new Date(event.start),
-            end: new Date(event.end)
-          })));
-        }
-      }
-    };
-
-    fetchEvents();
-  }, []);
-
-  useEffect(() => {
-    localStorage.setItem('events', JSON.stringify(events));
-  }, [events]);
+  const [reservations, setReservations] = useState<any[]>([]);
+  const [smtpSettings, setSmtpSettings] = useState<any>(null);
 
   const addEvent = useCallback(async (event: Event) => {
     try {
-      const response = await axios.post('http://localhost:3001/api/events', event);
+      const response = await axios.post('/api/events', event);
       setEvents(prevEvents => [...prevEvents, response.data]);
     } catch (error) {
       console.error('Error adding event:', error);
-      // ローカルストレージにのみ追加
-      setEvents(prevEvents => [...prevEvents, event]);
     }
   }, []);
 
-  const updateEvent = useCallback(async (updatedEvent: Event) => {
+  const updateEvent = useCallback(async (id: string, updatedEvent: Event) => {
     try {
-      await axios.put(`http://localhost:3001/api/events/${updatedEvent.id}`, updatedEvent);
-      setEvents(prevEvents =>
-        prevEvents.map(event => event.id === updatedEvent.id ? updatedEvent : event)
-      );
+      const response = await axios.put(`/api/events/${id}`, updatedEvent);
+      setEvents(prevEvents => prevEvents.map(event => event.id === id ? response.data : event));
     } catch (error) {
       console.error('Error updating event:', error);
-      // ローカルストレージのみ更新
-      setEvents(prevEvents =>
-        prevEvents.map(event => event.id === updatedEvent.id ? updatedEvent : event)
-      );
     }
   }, []);
 
   const deleteEvent = useCallback(async (id: string) => {
     try {
-      await axios.delete(`http://localhost:3001/api/events/${id}`);
+      await axios.delete(`/api/events/${id}`);
       setEvents(prevEvents => prevEvents.filter(event => event.id !== id));
     } catch (error) {
       console.error('Error deleting event:', error);
-      // ローカルストレージのみから削除
-      setEvents(prevEvents => prevEvents.filter(event => event.id !== id));
     }
   }, []);
 
+  const addReservation = useCallback(async (reservation: any) => {
+    try {
+      const response = await axios.post('/api/reservations', reservation);
+      setReservations(prevReservations => [...prevReservations, response.data]);
+    } catch (error) {
+      console.error('Error adding reservation:', error);
+    }
+  }, []);
+
+  const updateReservation = useCallback(async (id: string, updatedReservation: any) => {
+    try {
+      const response = await axios.put(`/api/reservations/${id}`, updatedReservation);
+      setReservations(prevReservations => prevReservations.map(reservation => reservation.id === id ? response.data : reservation));
+    } catch (error) {
+      console.error('Error updating reservation:', error);
+    }
+  }, []);
+
+  const deleteReservation = useCallback(async (id: string) => {
+    try {
+      await axios.delete(`/api/reservations/${id}`);
+      setReservations(prevReservations => prevReservations.filter(reservation => reservation.id !== id));
+    } catch (error) {
+      console.error('Error deleting reservation:', error);
+    }
+  }, []);
+
+  const updateSmtpSettings = useCallback(async (settings: any) => {
+    try {
+      const response = await axios.put('/api/smtp-settings', settings);
+      setSmtpSettings(response.data);
+    } catch (error) {
+      console.error('Error updating SMTP settings:', error);
+    }
+  }, []);
+
+  useEffect(() => {
+    // イベントとSMTP設定を取得する初期化ロジックをここに追加
+  }, []);
+
   return (
-    <EventContext.Provider value={{ events, addEvent, updateEvent, deleteEvent }}>
+    <EventContext.Provider value={{
+      events,
+      reservations,
+      smtpSettings,
+      addEvent,
+      updateEvent,
+      deleteEvent,
+      addReservation,
+      updateReservation,
+      deleteReservation,
+      updateSmtpSettings
+    }}>
       {children}
     </EventContext.Provider>
   );
 };
-
