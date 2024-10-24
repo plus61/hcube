@@ -11,6 +11,9 @@ const ReservationPage: React.FC = () => {
   const [childAge, setChildAge] = useState('');
   const [message, setMessage] = useState('');
   const [submitStatus, setSubmitStatus] = useState<'idle' | 'success' | 'error'>('idle');
+  const [formData, setFormData] = useState({
+    // 初期値
+  });
 
   const getAvailableSeats = (eventId: string) => {
     const event = events.find(e => e.id === eventId);
@@ -71,6 +74,15 @@ const ReservationPage: React.FC = () => {
     setSelectedEvent('');
     setChildAge('');
     setMessage('');
+  };
+
+  const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const { name, value } = e.target;
+    console.log(`Updating ${name} with value: ${value}`);
+    setFormData(prevData => ({
+      ...prevData,
+      [name]: value
+    }));
   };
 
   return (

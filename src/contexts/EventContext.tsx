@@ -1,46 +1,20 @@
-import React, { createContext, useState, useContext, ReactNode, useEffect } from 'react';
-import emailjs from '@emailjs/browser';
+import React, { createContext, useState, useContext, ReactNode, useEffect, useCallback } from 'react';
 
-interface Event {
+export interface Event {
   id: string;
-  name: string;
-  date: string;
-  startTime: string;
-  endTime: string;
-  capacity: number;
-  venue: string; // Added venue field
+  title: string;
+  start: Date;
+  end: Date;
 }
 
-interface Reservation {
-  id: string;
-  eventId: string;
-  name: string;
-  email: string;
-  childAge: string;
-  message?: string;
-  completed?: boolean;
-  assignedStaff?: string; // Added assignedStaff field
-}
-
-interface SMTPSettings {
-  serviceId: string;
-  templateId: string;
-  publicKey: string;
-}
-
-type EventContextType = {
+interface EventContextType {
   events: Event[];
-  reservations: Reservation[];
-  smtpSettings: SMTPSettings;
-  addEvent: (event: Omit<Event, 'id'>) => void;
+  addEvent: (event: Event) => void;
+  updateEvent: (event: Event) => void;
   deleteEvent: (id: string) => void;
-  addReservation: (reservation: Omit<Reservation, 'id'>) => void;
-  updateReservation: (id: string, updates: Partial<Reservation>) => void;
-  deleteReservation: (id: string) => void;
-  updateSmtpSettings: (settings: SMTPSettings) => void;
-};
+}
 
-const EventContext = createContext<EventContextType | undefined>(undefined);
+export const EventContext = createContext<EventContextType | undefined>(undefined);
 
 export const useEventContext = () => {
   const context = useContext(EventContext);
@@ -50,62 +24,98 @@ export const useEventContext = () => {
   return context;
 };
 
-export const EventProvider: React.FC<{ children: ReactNode }> = ({ children }) => {
+import React, { createContext, useState, useEffect, useCallback } from 'react';
+
+export interface Event {
+  id: string;
+  title: string;
+  start: Date;
+  end: Date;
+}
+
+interface EventContextType {
+  events: Event[];
+  addEvent: (event: Event) => void;
+  updateEvent: (event: Event) => void;
+  deleteEvent: (id: string) => void;
+}
+
+export const EventContext = createContext<EventContextType | undefined>(undefined);
+
+export const EventProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const [events, setEvents] = useState<Event[]>([]);
-  const [reservations, setReservations] = useState<Reservation[]>([]);
-  const [smtpSettings, setSmtpSettings] = useState<SMTPSettings>({
-    serviceId: '',
-    templateId: '',
-    publicKey: '',
-  });
-
-  const addEvent = (event: Omit<Event, 'id'>) => {
-    const newEvent = { ...event, id: Date.now().toString() };
-    setEvents([...events, newEvent]);
-  };
-
-  const deleteEvent = (id: string) => {
-    setEvents(events.filter(event => event.id !== id));
-  };
-
-  const addReservation = (reservation: Omit<Reservation, 'id'>) => {
-    const newReservation = { ...reservation, id: Date.now().toString(), completed: false };
-    setReservations([...reservations, newReservation]);
-  };
-
-  const updateReservation = (id: string, updates: Partial<Reservation>) => {
-    setReservations(reservations.map(reservation =>
-      reservation.id === id ? { ...reservation, ...updates } : reservation
-    ));
-  };
-
-  const deleteReservation = (id: string) => {
-    setReservations(reservations.filter(reservation => reservation.id !== id));
-  };
-
-  const updateSmtpSettings = (settings: SMTPSettings) => {
-    setSmtpSettings(settings);
-    localStorage.setItem('smtpSettings', JSON.stringify(settings));
-  };
 
   useEffect(() => {
-    const storedSettings = localStorage.getItem('smtpSettings');
-    if (storedSettings) {
-      setSmtpSettings(JSON.parse(storedSettings));
+    const fetchEvents = async () => {
+      try {
+        const response = await axios.get('http://localhost:3001/api/events');
+        setEvents(response.data.map((event: Event) => ({
+          ...event,
+          start: new Date(event.start),
+          end: new Date(event.end)
+        })));
+      } catch (error) {
+        console.error('Error fetching events:', error);
+        // ローカルストレージからのフォールバック
+        const storedEvents = localStorage.getItem('events');
+        if (storedEvents) {
+          setEvents(JSON.parse(storedEvents).map((event: Event) => ({
+            ...event,
+            start: new Date(event.start),
+            end: new Date(event.end)
+          })));
+        }
+      }
+    };
+
+    fetchEvents();
+  }, []);
+
+  useEffect(() => {
+    localStorage.setItem('events', JSON.stringify(events));
+  }, [events]);
+
+  const addEvent = useCallback(async (event: Event) => {
+    try {
+      const response = await axios.post('http://localhost:3001/api/events', event);
+      setEvents(prevEvents => [...prevEvents, response.data]);
+    } catch (error) {
+      console.error('Error adding event:', error);
+      // ローカルストレージにのみ追加
+      setEvents(prevEvents => [...prevEvents, event]);
     }
   }, []);
 
-  const contextValue: EventContextType = {
-    events,
-    reservations,
-    smtpSettings,
-    addEvent,
-    deleteEvent,
-    addReservation,
-    updateReservation,
-    deleteReservation,
-    updateSmtpSettings,
-  };
+  const updateEvent = useCallback(async (updatedEvent: Event) => {
+    try {
+      await axios.put(`http://localhost:3001/api/events/${updatedEvent.id}`, updatedEvent);
+      setEvents(prevEvents =>
+        prevEvents.map(event => event.id === updatedEvent.id ? updatedEvent : event)
+      );
+    } catch (error) {
+      console.error('Error updating event:', error);
+      // ローカルストレージのみ更新
+      setEvents(prevEvents =>
+        prevEvents.map(event => event.id === updatedEvent.id ? updatedEvent : event)
+      );
+    }
+  }, []);
 
-  return <EventContext.Provider value={contextValue}>{children}</EventContext.Provider>;
+  const deleteEvent = useCallback(async (id: string) => {
+    try {
+      await axios.delete(`http://localhost:3001/api/events/${id}`);
+      setEvents(prevEvents => prevEvents.filter(event => event.id !== id));
+    } catch (error) {
+      console.error('Error deleting event:', error);
+      // ローカルストレージのみから削除
+      setEvents(prevEvents => prevEvents.filter(event => event.id !== id));
+    }
+  }, []);
+
+  return (
+    <EventContext.Provider value={{ events, addEvent, updateEvent, deleteEvent }}>
+      {children}
+    </EventContext.Provider>
+  );
 };
+

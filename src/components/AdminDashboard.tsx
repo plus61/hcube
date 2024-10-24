@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Calendar, Clock, Plus, Edit, Trash, Check, X, Download, MapPin } from 'lucide-react';
 import { useEventContext } from '../contexts/EventContext';
+import { debounce } from 'lodash';
 
 const AdminDashboard: React.FC = () => {
   const navigate = useNavigate();
@@ -104,6 +105,18 @@ const AdminDashboard: React.FC = () => {
     link.href = URL.createObjectURL(blob);
     link.download = `予約一覧_${new Date().toLocaleDateString()}.csv`;
     link.click();
+  };
+
+  const debouncedHandleInputChange = debounce((name: string, value: string) => {
+    setFormData(prevData => ({
+      ...prevData,
+      [name]: value
+    }));
+  }, 300); // 300ミリ秒のデバウンス
+
+  const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const { name, value } = e.target;
+    debouncedHandleInputChange(name, value);
   };
 
   return (
