@@ -20,17 +20,13 @@
   from = "/*"
   to = "/index.html"
   status = 200
-  force = true   # 追加
-  headers = {X-From = "Netlify"}  # 追加
-
-[headers]
-  for = "/*"
-    [headers.values]
-    Cache-Control = "no-cache"  # キャッシュ制御を追加
-    X-Frame-Options = "DENY"
-    X-XSS-Protection = "1; mode=block"
+  force = true
+  headers = {X-From = "Netlify"}
 
 [[headers]]
   for = "/*"
   [headers.values]
-  X-From = "Netlify"
+    Cache-Control = "no-cache"
+    X-Frame-Options = "DENY"
+    X-XSS-Protection = "1; mode=block"
+    X-From = "Netlify"
