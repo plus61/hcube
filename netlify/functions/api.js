@@ -10,28 +10,37 @@ const app = express();
 app.use(cors());
 app.use(express.json());
 
-// SMTPトランスポーターを作成する関数
-function createTransporter() {
-  return nodemailer.createTransport({
-    host: process.env.SMTP_HOST,
-    port: process.env.SMTP_PORT,
+function getSmtpSettings() {
+  return {
+    host: process.env.SMTP_HOST || '',
+    port: process.env.SMTP_PORT || '',
     secure: process.env.SMTP_SECURE === 'true',
+    user: process.env.SMTP_USER || '',
+    pass: process.env.SMTP_PASS || ''
+  };
+}
+
+function createTransporter() {
+  const settings = getSmtpSettings();
+  return nodemailer.createTransport({
+    host: settings.host,
+    port: settings.port,
+    secure: settings.secure,
     auth: {
-      user: process.env.SMTP_USER,
-      pass: process.env.SMTP_PASS,
+      user: settings.user,
+      pass: settings.pass,
     },
   });
 }
 
-let transporter = createTransporter();
-
-// SMTP設定を取得するエンドポイント
+// SMTP設定取得エンドポイント
 app.get('/smtp-settings', (req, res) => {
+  const settings = getSmtpSettings();
   res.json({
-    host: process.env.SMTP_HOST,
-    port: process.env.SMTP_PORT,
-    secure: process.env.SMTP_SECURE === 'true',
-    user: process.env.SMTP_USER,
+    host: settings.host,
+    port: settings.port,
+    secure: settings.secure,
+    user: settings.user
   });
 });
 
@@ -39,8 +48,9 @@ app.get('/smtp-settings', (req, res) => {
 app.post('/send-email', async (req, res) => {
   try {
     const { to, subject, text } = req.body;
+    const transporter = createTransporter();
     await transporter.sendMail({
-      from: process.env.SMTP_USER,
+      from: getSmtpSettings().user,
       to,
       subject,
       text,
