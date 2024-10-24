@@ -9,7 +9,7 @@
 [functions]
   node_bundler = "esbuild"
   external_node_modules = ["express", "nodemailer", "cors", "dotenv"]
-  included_files = ["netlify/functions/*.js"]
+  included_files = ["netlify/functions/*.js", "netlify/functions/*.cjs"]
 
 [[redirects]]
   from = "/api/*"
@@ -29,3 +29,8 @@
     Cache-Control = "no-cache"  # キャッシュ制御を追加
     X-Frame-Options = "DENY"
     X-XSS-Protection = "1; mode=block"
+
+[[headers]]
+  for = "/*"
+  [headers.values]
+  X-From = "Netlify"
