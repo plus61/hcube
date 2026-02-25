@@ -1,4 +1,4 @@
-import React, { createContext, useState, useContext, ReactNode, useEffect, useCallback } from 'react';
+import React, { createContext, useState, useContext, useEffect, useCallback } from 'react';
 import axios from 'axios';
 
 export interface Event {
@@ -9,6 +9,7 @@ export interface Event {
   endTime: string;
   capacity: number;
   venue: string;
+  sortOrder: number;
 }
 
 export interface EventContextType {
@@ -18,6 +19,7 @@ export interface EventContextType {
   addEvent: (event: Event) => Promise<void>;
   updateEvent: (id: string, updatedEvent: Event) => Promise<void>;
   deleteEvent: (id: string) => Promise<void>;
+  reorderEvents: (eventId: string, direction: 'up' | 'down') => Promise<void>;
   addReservation: (reservation: any) => Promise<void>;
   updateReservation: (id: string, updatedReservation: any) => Promise<void>;
   deleteReservation: (id: string) => Promise<void>;
@@ -39,14 +41,30 @@ export const EventProvider: React.FC<{ children: React.ReactNode }> = ({ childre
   const [reservations, setReservations] = useState<any[]>([]);
   const [smtpSettings, setSmtpSettings] = useState<any>(null);
 
+  useEffect(() => {
+    const fetchEvents = async () => {
+      try {
+        const response = await axios.get('/api/events');
+        setEvents(response.data);
+      } catch (error) {
+        console.error('Error fetching events:', error);
+      }
+    };
+    fetchEvents();
+  }, []);
+
   const addEvent = useCallback(async (event: Event) => {
     try {
-      const response = await axios.post('/api/events', event);
+      const maxSortOrder = events.length > 0
+        ? Math.max(...events.map(e => e.sortOrder ?? 0))
+        : 0;
+      const eventWithOrder = { ...event, sortOrder: maxSortOrder + 1 };
+      const response = await axios.post('/api/events', eventWithOrder);
       setEvents(prevEvents => [...prevEvents, response.data]);
     } catch (error) {
       console.error('Error adding event:', error);
     }
-  }, []);
+  }, [events]);
 
   const updateEvent = useCallback(async (id: string, updatedEvent: Event) => {
     try {
@@ -65,6 +83,37 @@ export const EventProvider: React.FC<{ children: React.ReactNode }> = ({ childre
       console.error('Error deleting event:', error);
     }
   }, []);
+
+  const reorderEvents = useCallback(async (eventId: string, direction: 'up' | 'down') => {
+    const sorted = [...events].sort((a, b) => (a.sortOrder ?? 0) - (b.sortOrder ?? 0));
+    const currentIndex = sorted.findIndex(e => e.id === eventId);
+    if (currentIndex === -1) return;
+
+    const swapIndex = direction === 'up' ? currentIndex - 1 : currentIndex + 1;
+    if (swapIndex < 0 || swapIndex >= sorted.length) return;
+
+    const currentEvent = sorted[currentIndex];
+    const swapEvent = sorted[swapIndex];
+
+    const updatedCurrent = { ...currentEvent, sortOrder: swapEvent.sortOrder };
+    const updatedSwap = { ...swapEvent, sortOrder: currentEvent.sortOrder };
+
+    try {
+      await Promise.all([
+        axios.put(`/api/events/${currentEvent.id}`, updatedCurrent),
+        axios.put(`/api/events/${swapEvent.id}`, updatedSwap),
+      ]);
+      setEvents(prevEvents =>
+        prevEvents.map(e => {
+          if (e.id === currentEvent.id) return updatedCurrent;
+          if (e.id === swapEvent.id) return updatedSwap;
+          return e;
+        })
+      );
+    } catch (error) {
+      console.error('Error reordering events:', error);
+    }
+  }, [events]);
 
   const addReservation = useCallback(async (reservation: any) => {
     try {
@@ -102,10 +151,6 @@ export const EventProvider: React.FC<{ children: React.ReactNode }> = ({ childre
     }
   }, []);
 
-  useEffect(() => {
-    // イベントとSMTP設定を取得する初期化ロジックをここに追加
-  }, []);
-
   return (
     <EventContext.Provider value={{
       events,
@@ -114,6 +159,7 @@ export const EventProvider: React.FC<{ children: React.ReactNode }> = ({ childre
       addEvent,
       updateEvent,
       deleteEvent,
+      reorderEvents,
       addReservation,
       updateReservation,
       deleteReservation,

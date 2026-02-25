@@ -68,7 +68,9 @@ app.post('/api/update-smtp', (req, res) => {
 app.get('/api/events', async (req, res) => {
   try {
     const data = await fs.readFile(dataFile, 'utf8');
-    res.json(JSON.parse(data));
+    const events = JSON.parse(data);
+    events.sort((a, b) => (a.sortOrder ?? 0) - (b.sortOrder ?? 0));
+    res.json(events);
   } catch (error) {
     console.error('Error reading events:', error);
     res.status(500).json({ error: 'Error reading events' });
@@ -80,6 +82,12 @@ app.post('/api/events', async (req, res) => {
     const newEvent = req.body;
     const data = await fs.readFile(dataFile, 'utf8');
     const events = JSON.parse(data);
+    if (newEvent.sortOrder == null) {
+      const maxOrder = events.length > 0
+        ? Math.max(...events.map(e => e.sortOrder ?? 0))
+        : 0;
+      newEvent.sortOrder = maxOrder + 1;
+    }
     events.push(newEvent);
     await fs.writeFile(dataFile, JSON.stringify(events, null, 2));
     res.status(201).json(newEvent);

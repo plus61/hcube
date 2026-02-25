@@ -11,6 +11,7 @@
   },
   "dependencies": {
     "@emailjs/browser": "^4.4.1",
+    "@headlessui/react": "^2.2.9",
     "axios": "^1.7.7",
     "lodash": "^4.17.21",
     "lucide-react": "^0.453.0",
