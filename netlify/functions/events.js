@@ -45,8 +45,9 @@ async function writeEvents(events) {
   await fs.writeFile(dataFilePath, JSON.stringify(existing, null, 2));
 }
 
-// GET /events - イベント一覧取得（sortOrder昇順）
-app.get('/events', async (req, res) => {
+// GET / - イベント一覧取得（sortOrder昇順）
+// Netlify redirect: /api/events → /.netlify/functions/events → Express sees "/"
+app.get('/', async (req, res) => {
   try {
     const events = await readEvents();
     events.sort((a, b) => (a.sortOrder ?? 0) - (b.sortOrder ?? 0));
@@ -57,8 +58,8 @@ app.get('/events', async (req, res) => {
   }
 });
 
-// POST /events - イベント追加
-app.post('/events', authenticate, async (req, res) => {
+// POST / - イベント追加
+app.post('/', authenticate, async (req, res) => {
   try {
     const newEvent = req.body;
     const events = await readEvents();
@@ -77,8 +78,9 @@ app.post('/events', authenticate, async (req, res) => {
   }
 });
 
-// PUT /events/:id - イベント更新
-app.put('/events/:id', authenticate, async (req, res) => {
+// PUT /:id - イベント更新
+// Netlify redirect: /api/events/123 → /.netlify/functions/events/123 → Express sees "/123"
+app.put('/:id', authenticate, async (req, res) => {
   try {
     const { id } = req.params;
     const updatedEvent = req.body;
@@ -96,8 +98,8 @@ app.put('/events/:id', authenticate, async (req, res) => {
   }
 });
 
-// DELETE /events/:id - イベント削除
-app.delete('/events/:id', authenticate, async (req, res) => {
+// DELETE /:id - イベント削除
+app.delete('/:id', authenticate, async (req, res) => {
   try {
     const { id } = req.params;
     let events = await readEvents();
